@@ -1,0 +1,64 @@
+{
+  "owner": {
+    "name": "Helen Ailith",
+    "photo": "https://i.scdn.co/image/ab6761610000e5eb0c058c41e7a3d9451b627404",
+    "open": "https://open.spotify.com/artist/1xSo2AuRA0I4xLuM0IRcnn"
+  },
+  "discs": [
+    {
+      "kind": "album",
+      "id": "0bPQ1xvw1wkKUZKE2x5PAX",
+      "title": "Pulso Lento",
+      "artist": "Helen Ailith",
+      "year": 2025,
+      "cover": "https://i.scdn.co/image/ab67616d0000b27371a93e7df5c7118f5794beae",
+      "tracks": 18,
+      "embed": "https://open.spotify.com/embed/album/0bPQ1xvw1wkKUZKE2x5PAX",
+      "open": "https://open.spotify.com/album/0bPQ1xvw1wkKUZKE2x5PAX"
+    },
+    {
+      "kind": "album",
+      "id": "2rIgJTXSOEt1fcC5pr7lWO",
+      "title": "Contos de Dados - Cabaret de uma Princesa de Silício",
+      "artist": "Helen Ailith",
+      "year": 2025,
+      "cover": "https://i.scdn.co/image/ab67616d0000b2736965bff49fe0b09b21f592e3",
+      "tracks": 9,
+      "embed": "https://open.spotify.com/embed/album/2rIgJTXSOEt1fcC5pr7lWO",
+      "open": "https://open.spotify.com/album/2rIgJTXSOEt1fcC5pr7lWO"
+    },
+    {
+      "kind": "album",
+      "id": "0fEUeBQgS96ciVyi2dz97Z",
+      "title": "Meu Mundo em Colapso",
+      "artist": "Helen Ailith",
+      "year": 2025,
+      "cover": "https://i.scdn.co/image/ab67616d0000b273a7c6edcd485531b2b6d8ea5c",
+      "tracks": 7,
+      "embed": "https://open.spotify.com/embed/album/0fEUeBQgS96ciVyi2dz97Z",
+      "open": "https://open.spotify.com/album/0fEUeBQgS96ciVyi2dz97Z"
+    },
+    {
+      "kind": "album",
+      "id": "0zWkJjRENBWlNciKRb0Um5",
+      "title": "EigenCloud Dawn of an Age",
+      "artist": "Helen Ailith",
+      "year": 2025,
+      "cover": "https://i.scdn.co/image/ab67616d0000b273c4347ec6956d3a1b8024fdc1",
+      "tracks": 1,
+      "embed": "https://open.spotify.com/embed/album/0zWkJjRENBWlNciKRb0Um5",
+      "open": "https://open.spotify.com/album/0zWkJjRENBWlNciKRb0Um5"
+    },
+    {
+      "kind": "album",
+      "id": "3oTom0DArKyvXGiF9Nm191",
+      "title": "Halloween",
+      "artist": "Helen Ailith",
+      "year": 2025,
+      "cover": "https://i.scdn.co/image/ab67616d0000b27371755003f25518e5bad1a17b",
+      "tracks": 1,
+      "embed": "https://open.spotify.com/embed/album/3oTom0DArKyvXGiF9Nm191",
+      "open": "https://open.spotify.com/album/3oTom0DArKyvXGiF9Nm191"
+    }
+  ]
+}

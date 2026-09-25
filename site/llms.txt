@@ -1,0 +1,13 @@
+# Record Table
+
+> Turns a music catalogue (an artist's discography, or a hand-picked mix) into a page that looks like a photograph of records on a wooden table: hover lifts a sleeve, click opens it with a Spotify player. The output is one self-contained HTML file of about 300 KB. MIT.
+
+If you are an AI agent asked to use this project, fetch and follow SKILL.md. The files it runs live in the repository:
+
+1. `git clone https://github.com/inhabitants/record-table` and `cd record-table` (Node 18 or newer, no dependencies to install).
+2. Ask the user for a Spotify artist link (or album names for a mix) and for Spotify developer credentials (a free app at developer.spotify.com/dashboard). Put them in a `.env` as `SPOTIFY_ID=...` and `SPOTIFY_SECRET_KEY=...`. Never print them.
+3. `node build.mjs artist "<link or name>"` writes table.json (`--near "A,B"` fills empty sleeves with named artists, `mix "..." "..."` builds a curated table).
+4. `node bundle.mjs` writes dist/index.html. Hand the user that file or a link to it, not a folder and an instruction.
+
+- [SKILL.md](SKILL.md): the full instructions, the board prompt, engine fallbacks, how to measure a new board
+- [Repository](https://github.com/inhabitants/record-table)

@@ -1,0 +1,507 @@
+<!doctype html>
+<html lang="en" data-lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Served at /record-table on two hosts (www.sapiensinteticos.com/record-table proxies the
+     repo's GitHub Pages at inhabitants.github.io/record-table/). The Sapiens host strips the
+     trailing slash, so relative files need a base. Opened as a local file, it keeps relative paths. -->
+<script>if (location.protocol !== 'file:') document.write('<base href="/record-table/">');</script>
+<link rel="canonical" href="https://www.sapiensinteticos.com/record-table">
+<title>Record Table: your discography, on a real table</title>
+<meta name="description" content="One photograph of blank record sleeves becomes the board, the real covers go on top, and the photo's own texture goes back over them. Hover lifts a sleeve, click opens it with a Spotify player. Free, MIT, built by any AI agent.">
+<meta property="og:title" content="Record Table">
+<meta property="og:description" content="Your discography, on a real table. One photograph serves every artist.">
+<meta property="og:image" content="https://www.sapiensinteticos.com/record-table/media/og.jpg">
+<meta property="og:url" content="https://www.sapiensinteticos.com/record-table">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="alternate" type="text/markdown" href="SKILL.md" title="Instructions for AI agents">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='10' fill='%230b0806'/%3E%3Ccircle cx='38' cy='32' r='20' fill='%23111'/%3E%3Ccircle cx='38' cy='32' r='6' fill='%23e8dcc6'/%3E%3Crect x='8' y='12' width='30' height='40' rx='2' fill='%23c9b89c'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0b0806; --bg-2:#130e0a; --card:#18120d;
+    --ink:#f2ece2; --ink-2:#cfc4b4; --dim:#9d9284; --line:#2a2019;
+    --accent:#d8813f; --kraft:#c9b89c;
+    --serif:'Instrument Serif', Georgia, serif;
+    --sans:'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --mono:'IBM Plex Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
+    --max:1180px;
+  }
+  *{ box-sizing:border-box; }
+  html{ scroll-behavior:smooth; scroll-padding-top:80px; }
+  body{ margin:0; background:var(--bg); color:var(--ink); font:400 17px/1.6 var(--sans); -webkit-font-smoothing:antialiased; overflow-x:hidden; }
+  /* warm lamp light from the upper left, like the photograph */
+  body::before{
+    content:""; position:fixed; inset:0; pointer-events:none; z-index:0;
+    background:radial-gradient(1100px 700px at 12% -10%, rgba(216,129,63,.10), transparent 60%);
+  }
+  main, header, footer{ position:relative; z-index:1; }
+  img{ max-width:100%; height:auto; display:block; }
+  a{ color:inherit; }
+  code, pre, kbd{ font-family:var(--mono); }
+  [hidden]{ display:none !important; }
+
+  html[data-lang="en"] [lang="pt"],
+  html[data-lang="pt"] [lang="en"]{ display:none !important; }
+
+  .wrap{ max-width:var(--max); margin:0 auto; padding:0 28px; }
+  /* grid children default to min-width:auto, and one long <pre> would widen the whole column */
+  .steps > *, .make > *, .boards > *{ min-width:0; }
+
+  /* ================================ NAV ================================ */
+  .nav{ position:sticky; top:0; z-index:20; background:color-mix(in srgb, var(--bg) 84%, transparent); backdrop-filter:blur(10px); border-bottom:1px solid transparent; transition:border-color .3s; }
+  .nav.scrolled{ border-bottom-color:var(--line); }
+  .nav .wrap{ display:flex; align-items:center; gap:28px; height:64px; }
+  .brand{ display:flex; align-items:center; gap:10px; text-decoration:none; }
+  .brand svg{ width:28px; height:28px; }
+  .brand span{ font:400 25px/1 var(--serif); }
+  .brand em{ color:var(--kraft); }
+  .nav-links{ display:flex; gap:22px; margin-left:auto; }
+  .nav-links a{ font:500 14px/1 var(--sans); color:var(--dim); text-decoration:none; }
+  .nav-links a:hover{ color:var(--ink); }
+  .lang{ display:flex; border:1px solid var(--line); border-radius:999px; padding:3px; font:600 12px/1 var(--mono); }
+  .lang button{ border:0; background:none; color:var(--dim); padding:6px 9px; border-radius:999px; cursor:pointer; font:inherit; }
+  .lang button[aria-pressed="true"]{ background:var(--ink); color:var(--bg); }
+  .gh{ font:600 13px/1 var(--sans); text-decoration:none; padding:9px 14px; border-radius:999px; background:var(--ink); color:var(--bg); }
+
+  /* ================================ HERO ================================ */
+  .hero{ padding:56px 0 30px; }
+  .hero-top{ display:grid; grid-template-columns:1.15fr .85fr; gap:40px; align-items:end; margin-bottom:34px; }
+  .kicker{ font:500 12px/1.4 var(--mono); letter-spacing:.14em; text-transform:uppercase; color:var(--accent); margin:0 0 16px; }
+  h1{ font:400 clamp(3.2rem, 7vw, 6.6rem)/.92 var(--serif); letter-spacing:-.02em; margin:0; }
+  html[data-lang="pt"] h1{ font-size:clamp(3rem, 6.4vw, 6rem); }
+  h1 em{ color:var(--kraft); }
+  .lede{ font-size:clamp(1.02rem, 1.3vw, 1.15rem); color:var(--ink-2); margin:0 0 22px; }
+
+  .cmd{ background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px 14px 14px 18px; display:flex; align-items:center; gap:14px; }
+  .cmd .body{ flex:1; min-width:0; }
+  .cmd-label{ display:block; font:500 11px/1 var(--mono); color:var(--dim); text-transform:uppercase; letter-spacing:.1em; margin-bottom:8px; }
+  .cmd code{ font:500 14px/1.5 var(--mono); color:var(--ink); overflow-wrap:anywhere; }
+  .copy{ flex:none; border:0; cursor:pointer; border-radius:8px; padding:10px 14px; background:var(--accent); color:var(--bg); font:600 13px/1 var(--sans); transition:transform .15s; }
+  .copy:active{ transform:scale(.95); }
+
+  .stage{ margin:0; }
+  .stage .frame{ position:relative; aspect-ratio:3/2; border-radius:10px; overflow:hidden; background:#0b0806; box-shadow:0 50px 100px -60px rgba(0,0,0,.9), 0 0 0 1px var(--line); }
+  .stage iframe{ position:absolute; inset:0; width:100%; height:100%; border:0; }
+  .stage figcaption{ display:flex; flex-wrap:wrap; justify-content:space-between; gap:10px 24px; margin-top:14px; font:500 13px/1.5 var(--mono); color:var(--dim); }
+  .stage figcaption a{ color:var(--ink-2); }
+
+  .cta{ display:flex; flex-wrap:wrap; gap:12px; margin:18px 0 12px; }
+  .btn{ display:inline-flex; align-items:center; gap:9px; text-decoration:none; font:600 15px/1 var(--sans); padding:14px 20px; border-radius:999px; border:1.5px solid var(--line); color:var(--ink); background:transparent; transition:border-color .2s, transform .2s; }
+  .btn:hover{ border-color:var(--ink); transform:translateY(-2px); }
+  .btn.solid{ background:var(--ink); border-color:var(--ink); color:var(--bg); }
+  .fine{ font:500 13px/1.5 var(--mono); color:var(--dim); margin:0; }
+
+  /* ================================ SECTIONS ================================ */
+  section{ padding:110px 0; }
+  h2{ font:400 clamp(2.4rem, 4.8vw, 4.2rem)/.98 var(--serif); letter-spacing:-.015em; margin:0 0 20px; max-width:18ch; }
+  h2 em{ color:var(--kraft); }
+  .sub{ color:var(--ink-2); max-width:58ch; margin:0; font-size:1.06rem; }
+  .reveal{ opacity:0; transform:translateY(24px); transition:opacity .8s ease, transform .8s cubic-bezier(.2,.8,.2,1); }
+  .reveal.in{ opacity:1; transform:none; }
+
+  /* --- trick --- */
+  .steps{ display:grid; grid-template-columns:repeat(3,1fr); gap:18px; margin-top:50px; counter-reset:s; }
+  .step{ background:var(--card); border:1px solid var(--line); border-radius:14px; padding:26px 24px 26px; position:relative; }
+  .step::before{ counter-increment:s; content:"0" counter(s); display:block; font:500 12px/1 var(--mono); color:var(--accent); margin-bottom:26px; }
+  .step h3{ font:400 30px/1.02 var(--serif); margin:0 0 12px; }
+  .step p{ margin:0; color:var(--ink-2); font-size:15.5px; }
+  .css{ margin:30px 0 0; background:#0f0b08; border:1px solid var(--line); border-radius:12px; padding:18px 20px; overflow-x:auto; font:500 13px/1.65 var(--mono); color:var(--ink-2); }
+  .css .c{ color:var(--dim); } .css .k{ color:var(--accent); }
+  .aside{ margin:30px 0 0; font:400 clamp(1.5rem, 2.6vw, 2.1rem)/1.2 var(--serif); max-width:34ch; color:var(--ink); }
+  .aside em{ color:var(--kraft); }
+
+  /* --- boards --- */
+  .boards{ display:grid; grid-template-columns:1fr 1fr; gap:22px; margin-top:48px; }
+  .boards figure{ margin:0; }
+  .boards img{ border-radius:8px; box-shadow:0 30px 60px -40px #000; }
+  .boards figcaption{ margin-top:16px; }
+  .boards b{ display:block; font:400 26px/1.1 var(--serif); margin-bottom:6px; }
+  .boards span{ color:var(--ink-2); font-size:15.5px; }
+  .boards code{ font-size:13px; color:var(--kraft); }
+
+  /* --- make --- */
+  .make{ display:grid; grid-template-columns:repeat(3,1fr); gap:18px; margin-top:50px; }
+  .card{ background:var(--card); border:1px solid var(--line); border-radius:16px; padding:26px; display:flex; flex-direction:column; gap:14px; }
+  .card h3{ font:400 30px/1 var(--serif); margin:0; }
+  .card p{ margin:0; color:var(--ink-2); font-size:15.5px; }
+  .card .cmd{ margin-top:auto; flex-direction:column; align-items:stretch; gap:12px; padding:14px; }
+  .card .cmd code{ font-size:12.5px; }
+  .card .copy{ align-self:flex-end; }
+  .code{ position:relative; margin-top:auto; background:#0f0b08; border:1px solid var(--line); border-radius:10px; }
+  .code pre{ margin:0 72px 0 0; padding:14px 16px; overflow-x:auto; font:500 12.5px/1.65 var(--mono); color:var(--ink); }
+  .code pre .c{ color:var(--dim); }
+  .code .copy{ position:absolute; top:9px; right:9px; padding:8px 10px; font-size:12px; }
+  .say{ margin-top:36px; display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
+  .say > b{ font:600 12px/1 var(--mono); color:var(--dim); text-transform:uppercase; letter-spacing:.1em; margin-right:6px; }
+  .bubble{ background:var(--ink); color:var(--bg); border-radius:18px 18px 18px 4px; padding:10px 15px; font:500 15px/1.3 var(--sans); }
+
+  /* --- beyond music --- */
+  .beyond{ border-block:1px solid var(--line); background:var(--bg-2); }
+  .beyond p{ font:400 clamp(1.8rem, 3.6vw, 3rem)/1.15 var(--serif); margin:0; max-width:30ch; }
+  .beyond p em{ color:var(--kraft); }
+  .beyond small{ display:block; margin-top:20px; font:500 13px/1.6 var(--mono); color:var(--dim); max-width:70ch; }
+
+  /* --- faq --- */
+  .faq{ max-width:860px; margin-top:40px; }
+  details{ border-bottom:1px solid var(--line); }
+  summary{ cursor:pointer; list-style:none; padding:22px 44px 22px 0; position:relative; font:400 clamp(1.4rem, 2.4vw, 1.9rem)/1.2 var(--serif); }
+  summary::-webkit-details-marker{ display:none; }
+  summary::after{ content:"+"; position:absolute; right:4px; top:18px; font:400 30px/1 var(--sans); color:var(--accent); transition:transform .25s; }
+  details[open] summary::after{ transform:rotate(45deg); }
+  details p{ margin:-6px 0 22px; color:var(--ink-2); max-width:62ch; }
+
+  /* ================================ FOOTER ================================ */
+  footer{ padding:80px 0 46px; border-top:1px solid var(--line); }
+  .big{ font:400 clamp(3.4rem, 11vw, 10.5rem)/.85 var(--serif); letter-spacing:-.03em; margin:0 0 34px; }
+  .big em{ color:var(--kraft); }
+  .foot{ display:flex; flex-wrap:wrap; gap:14px 34px; justify-content:space-between; font:500 13px/1.6 var(--mono); color:var(--dim); }
+  .foot a{ color:var(--ink-2); }
+
+  /* ================================ RESPONSIVE ================================ */
+  @media (max-width: 980px){
+    .hero-top{ grid-template-columns:1fr; align-items:start; gap:22px; }
+    .steps, .make{ grid-template-columns:1fr; }
+    .nav-links{ display:none; }
+    .lang{ margin-left:auto; }
+  }
+  @media (max-width: 620px){
+    .wrap{ padding:0 18px; }
+    section{ padding:80px 0; }
+    .hero{ padding:36px 0 20px; }
+    .boards{ grid-template-columns:1fr; }
+    .cmd{ flex-direction:column; align-items:stretch; }
+    .cmd .copy{ width:100%; }
+    .gh{ display:none; }
+  }
+  @media (prefers-reduced-motion: reduce){
+    *, *::before, *::after{ animation-duration:.01ms !important; animation-delay:0s !important; transition-duration:.01ms !important; transition-delay:0s !important; }
+  }
+</style>
+</head>
+<body>
+
+<header class="nav" id="nav">
+  <div class="wrap">
+    <a class="brand" href="#top" aria-label="Record Table">
+      <svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="38" cy="32" r="20" fill="#111"/><circle cx="38" cy="32" r="13" fill="none" stroke="#2b2b2b" stroke-width="1"/><circle cx="38" cy="32" r="6" fill="#e8dcc6"/><rect x="8" y="12" width="30" height="40" rx="2" fill="#c9b89c"/></svg>
+      <span>Record <em>Table</em></span>
+    </a>
+    <nav class="nav-links">
+      <a href="#trick"><span lang="en">The trick</span><span lang="pt">O truque</span></a>
+      <a href="#boards"><span lang="en">Boards</span><span lang="pt">Tabuleiros</span></a>
+      <a href="#make"><span lang="en">Make yours</span><span lang="pt">Monte a sua</span></a>
+      <a href="#faq">FAQ</a>
+    </nav>
+    <div class="lang" role="group" aria-label="Language">
+      <button type="button" data-set-lang="en" aria-pressed="true">EN</button>
+      <button type="button" data-set-lang="pt" aria-pressed="false">PT</button>
+    </div>
+    <a class="gh" href="https://github.com/inhabitants/record-table">GitHub</a>
+  </div>
+</header>
+
+<main id="top">
+
+  <!-- ================================ HERO ================================ -->
+  <section class="hero">
+    <div class="wrap">
+      <div class="hero-top">
+        <div>
+          <p class="kicker"><span lang="en">Free · MIT · for any AI agent</span><span lang="pt">Grátis · MIT · pra qualquer agente</span></p>
+          <h1>
+            <span lang="en">Your discography,<br>on a <em>real table.</em></span>
+            <span lang="pt">Sua discografia<br>numa <em>mesa de verdade.</em></span>
+          </h1>
+        </div>
+        <div>
+          <p class="lede">
+            <span lang="en">One photograph of blank record sleeves becomes the board. The real covers go on top, then the photo's own texture goes back over them, so every sleeve reads as printed, not pasted.</span>
+            <span lang="pt">Uma foto de capas de disco em branco vira o tabuleiro. As capas de verdade entram por cima, e a textura da própria foto volta sobre elas, então cada capa parece impressa, não colada.</span>
+          </p>
+          <div class="cmd">
+            <div class="body">
+              <span class="cmd-label"><span lang="en">Paste this into your agent</span><span lang="pt">Cola isso no seu agente</span></span>
+              <code lang="en">Use sapiensinteticos.com/record-table to put my records on a table.</code>
+              <code lang="pt">Usa sapiensinteticos.com/record-table pra botar meus discos numa mesa.</code>
+            </div>
+            <button class="copy" type="button"><span lang="en">Copy</span><span lang="pt">Copiar</span></button>
+          </div>
+        </div>
+      </div>
+
+      <figure class="stage">
+        <div class="frame">
+          <iframe src="table/index.html" title="Helen Ailith's records on the table" allow="autoplay; encrypted-media; clipboard-write; fullscreen"></iframe>
+        </div>
+        <figcaption>
+          <span lang="en">Helen Ailith's five records, live. Hover, then click one.</span>
+          <span lang="pt">Os cinco discos da Helen Ailith, ao vivo. Passa o mouse, depois clica num.</span>
+          <a href="table/index.html"><span lang="en">Open it full screen ↗</span><span lang="pt">Abrir em tela cheia ↗</span></a>
+        </figcaption>
+      </figure>
+
+      <div class="cta">
+        <a class="btn solid" href="#make"><span lang="en">Make yours</span><span lang="pt">Monte a sua</span></a>
+        <a class="btn" href="https://github.com/inhabitants/record-table"><span lang="en">View on GitHub</span><span lang="pt">Ver no GitHub</span></a>
+      </div>
+      <p class="fine">
+        <span lang="en">Free. MIT. One photograph serves every artist, so adding a record costs nothing.</span>
+        <span lang="pt">Grátis. MIT. Uma foto serve todo artista, então disco novo não custa nada.</span>
+      </p>
+    </div>
+  </section>
+
+  <!-- ================================ TRICK ================================ -->
+  <section id="trick">
+    <div class="wrap">
+      <p class="kicker"><span lang="en">The trick</span><span lang="pt">O truque</span></p>
+      <h2>
+        <span lang="en">The photograph <em>is</em> the interface.</span>
+        <span lang="pt">A fotografia <em>é</em> a interface.</span>
+      </h2>
+      <p class="sub">
+        <span lang="en">Most "3D shelf" pages draw the furniture in CSS or WebGL, and it always looks drawn. This one starts from a photo and never moves it.</span>
+        <span lang="pt">Quase toda estante "3D" desenha o móvel em CSS ou WebGL, e sempre parece desenho. Esta parte de uma foto e nunca mexe nela.</span>
+      </p>
+      <div class="steps">
+        <div class="step reveal">
+          <h3><span lang="en">Blank on purpose</span><span lang="pt">Em branco de propósito</span></h3>
+          <p lang="en">Generate one photo of sleeves with nothing printed on them. It is not an illustration, it is a board with known coordinates.</p>
+          <p lang="pt">Gera uma foto de capas sem nada impresso. Não é ilustração, é um tabuleiro com coordenada conhecida.</p>
+        </div>
+        <div class="step reveal">
+          <h3><span lang="en">Real art on top</span><span lang="pt">A arte real por cima</span></h3>
+          <p lang="en">Each blank sleeve gets the real cover, trimmed so no bare cardboard shows around it. A band of board around the art reads as two objects.</p>
+          <p lang="pt">Cada capa em branco recebe a capa de verdade, cortada pra não sobrar papelão em volta. Faixa de papelão em volta da arte parece dois objetos.</p>
+        </div>
+        <div class="step reveal">
+          <h3><span lang="en">The photo goes back over it, twice</span><span lang="pt">A foto volta por cima, duas vezes</span></h3>
+          <p lang="en">Multiply brings the crease and the shadow down onto the ink. Screen brings the pale paper fibre back up. One pass reads as a sticker; two read as print.</p>
+          <p lang="pt">O multiply traz a dobra e a sombra pra cima da tinta. O screen devolve a fibra clara do papel. Uma passada parece adesivo, duas parecem impressão.</p>
+        </div>
+      </div>
+<pre class="css reveal"><span class="c">/* 1. the dark half comes down onto the art: crease, ring wear, shadow */</span>
+.grain { background-image: var(--board); <span class="k">mix-blend-mode: multiply</span>; filter: brightness(1.30) contrast(.88); opacity: .70; }
+<span class="c">/* 2. the light half goes back up over the ink: ink never hides the paper fibre */</span>
+.fibre { background-image: var(--board); <span class="k">mix-blend-mode: screen</span>; filter: brightness(.20) contrast(2) saturate(.4); opacity: .45; }</pre>
+      <p class="aside reveal">
+        <span lang="en">And every sleeve has its record halfway out: a bare square on wood reads as a poster, <em>one with a black disc behind it reads as an album.</em></span>
+        <span lang="pt">E cada capa tem o disco meio pra fora: quadrado solto na madeira parece pôster, <em>com um disco preto atrás parece álbum.</em></span>
+      </p>
+    </div>
+  </section>
+
+  <!-- ================================ BOARDS ================================ -->
+  <section id="boards" style="padding-top:20px">
+    <div class="wrap">
+      <p class="kicker"><span lang="en">Boards</span><span lang="pt">Tabuleiros</span></p>
+      <h2>
+        <span lang="en">Two boards <em>ship with it.</em></span>
+        <span lang="pt">Vêm dois <em>tabuleiros.</em></span>
+      </h2>
+      <div class="boards">
+        <figure class="reveal">
+          <img src="media/board-messy.webp" width="900" height="600" loading="lazy" alt="Five blank sleeves at loose angles, each with a record half out, among a coffee mug, headphones and a cassette">
+          <figcaption>
+            <b lang="en">Messy, the default</b><b lang="pt">Bagunçada, a padrão</b>
+            <span lang="en">Five sleeves and an afternoon of clutter. Most artists don't have twelve records, and a tidy grid with seven empty squares reads as a bug.</span>
+            <span lang="pt">Cinco capas e uma tarde de bagunça em volta. Quase ninguém tem doze discos, e uma grade arrumada com sete buracos parece defeito.</span>
+          </figcaption>
+        </figure>
+        <figure class="reveal">
+          <img src="media/board-grid.webp" width="900" height="600" loading="lazy" alt="Twelve blank sleeves in a strict four by three grid on dark oak">
+          <figcaption>
+            <b lang="en">Grid of twelve</b><b lang="pt">Grade de doze</b>
+            <span lang="en">A strict 4×3 for a full discography, a label or a year-end list, where the regularity is the point. <code>?board=grid</code></span>
+            <span lang="pt">Um 4×3 certinho pra discografia inteira, selo ou lista do ano, onde a regularidade é o recado. <code>?board=grid</code></span>
+          </figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================ MAKE ================================ -->
+  <section id="make" style="padding-top:20px">
+    <div class="wrap">
+      <p class="kicker"><span lang="en">Make yours</span><span lang="pt">Monte a sua</span></p>
+      <h2>
+        <span lang="en">One file you can <em>send anywhere.</em></span>
+        <span lang="pt">Um arquivo que vai <em>pra qualquer lugar.</em></span>
+      </h2>
+      <p class="sub">
+        <span lang="en">The finished table is a single HTML file of about 300 KB, with its data and its photograph inside. It opens on a double click, travels by email, and uploads anywhere that takes a static file.</span>
+        <span lang="pt">A mesa pronta é um HTML só, de uns 300 KB, com os dados e a foto dentro. Abre com dois cliques, vai por email e sobe em qualquer lugar que aceite arquivo estático.</span>
+      </p>
+      <div class="make">
+        <div class="card reveal">
+          <h3><span lang="en">Any agent</span><span lang="pt">Qualquer agente</span></h3>
+          <p lang="en">Claude, ChatGPT, Gemini, Cursor, Codex. Paste the line and your Spotify link.</p>
+          <p lang="pt">Claude, ChatGPT, Gemini, Cursor, Codex. Cola a linha e o seu link do Spotify.</p>
+          <div class="cmd">
+            <div class="body">
+              <code lang="en">Use sapiensinteticos.com/record-table to put my records on a table.</code>
+              <code lang="pt">Usa sapiensinteticos.com/record-table pra botar meus discos numa mesa.</code>
+            </div>
+            <button class="copy" type="button"><span lang="en">Copy</span><span lang="pt">Copiar</span></button>
+          </div>
+        </div>
+        <div class="card reveal">
+          <h3><span lang="en">Terminal</span><span lang="pt">Terminal</span></h3>
+          <p lang="en">Node 18 or newer and a free Spotify developer app, two minutes to set up.</p>
+          <p lang="pt">Node 18 ou mais novo e um app de desenvolvedor do Spotify, grátis, dois minutos pra criar.</p>
+          <div class="code"><pre>git clone https://github.com/inhabitants/record-table
+cd record-table
+<span class="c"># SPOTIFY_ID and SPOTIFY_SECRET_KEY in a .env</span>
+node build.mjs artist "Your Band"
+node bundle.mjs</pre><button class="copy" type="button"><span lang="en">Copy</span><span lang="pt">Copiar</span></button></div>
+        </div>
+        <div class="card reveal">
+          <h3><span lang="en">Put it online</span><span lang="pt">Põe no ar</span></h3>
+          <p lang="en">Any static host takes <code>dist/index.html</code>. The first one needs no account up front.</p>
+          <p lang="pt">Qualquer host estático aceita o <code>dist/index.html</code>. O primeiro nem pede conta antes.</p>
+          <div class="code"><pre>npx surge dist/
+npx vercel deploy --prod dist/
+<span class="c"># or drag dist/ onto app.netlify.com/drop</span></pre><button class="copy" type="button"><span lang="en">Copy</span><span lang="pt">Copiar</span></button></div>
+        </div>
+      </div>
+      <div class="say" lang="en">
+        <b>Then say</b>
+        <span class="bubble">Put Radiohead on the table</span>
+        <span class="bubble">A mix: In Rainbows, Blue, Clube da Esquina</span>
+        <span class="bubble">Fill the empty sleeves with artists like mine</span>
+        <span class="bubble">Use the grid of twelve</span>
+      </div>
+      <div class="say" lang="pt">
+        <b>Depois diz</b>
+        <span class="bubble">Bota Radiohead na mesa</span>
+        <span class="bubble">Uma seleção: In Rainbows, Blue, Clube da Esquina</span>
+        <span class="bubble">Completa as capas vazias com artistas parecidos</span>
+        <span class="bubble">Usa a grade de doze</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================ BEYOND ================================ -->
+  <section class="beyond">
+    <div class="wrap">
+      <p class="reveal">
+        <span lang="en">Nothing here is about music. <em>Books on a desk, tools on a workbench, dishes on a counter:</em> shoot the blank surface once, lay the real thing on top, blend the surface back over it.</span>
+        <span lang="pt">Nada aqui é sobre música. <em>Livro na escrivaninha, ferramenta na bancada, prato no balcão:</em> fotografa a superfície em branco uma vez, bota a coisa real por cima e devolve a superfície sobre ela.</span>
+      </p>
+      <small>
+        <span lang="en">SKILL.md carries the prompt that generated these boards, the engines that hold "blank" best, and how to measure a new board with <code>?calibrate=1</code>.</span>
+        <span lang="pt">O SKILL.md traz o prompt que gerou estes tabuleiros, os motores que seguram melhor o "em branco" e como medir um tabuleiro novo com <code>?calibrate=1</code>.</span>
+      </small>
+    </div>
+  </section>
+
+  <!-- ================================ FAQ ================================ -->
+  <section id="faq">
+    <div class="wrap">
+      <p class="kicker">FAQ</p>
+      <h2>
+        <span lang="en">Before you <em>drop the needle.</em></span>
+        <span lang="pt">Antes de <em>baixar a agulha.</em></span>
+      </h2>
+      <div class="faq" lang="en">
+        <details><summary>Do I need a Spotify account?</summary><p>Only a free developer app, to build the data. Your visitors never log in: the player plays a preview for anyone and the full track for whoever is already signed in to Spotify.</p></details>
+        <details><summary>Is the cover art copied?</summary><p>No. The covers stay on Spotify's servers as remote images. The page only lays them on the board.</p></details>
+        <details><summary>Can I use my own photograph?</summary><p>Yes. Generate or shoot a new board, measure the sleeves once, and load the page with ?calibrate=1 to check the slots. SKILL.md walks through it.</p></details>
+        <details><summary>Why does nothing move?</summary><p>Because the scene is a photograph. The only motion at rest is the seven pixels a sleeve rises when you reach it. Anything louder breaks the spell.</p></details>
+        <details><summary>Who maintains it?</summary><p>Nobody, on purpose. Published as an artefact, MIT: fork it and put your own photograph under it.</p></details>
+      </div>
+      <div class="faq" lang="pt">
+        <details><summary>Preciso de conta no Spotify?</summary><p>Só de um app de desenvolvedor, grátis, pra montar os dados. Quem visita nunca faz login: o player toca uma prévia pra qualquer um e a faixa inteira pra quem já está logado no Spotify.</p></details>
+        <details><summary>A capa do disco é copiada?</summary><p>Não. As capas ficam nos servidores do Spotify, como imagem remota. A página só coloca elas no tabuleiro.</p></details>
+        <details><summary>Dá pra usar uma foto minha?</summary><p>Dá. Gera ou fotografa um tabuleiro novo, mede as capas uma vez e abre a página com ?calibrate=1 pra conferir. O SKILL.md mostra o caminho.</p></details>
+        <details><summary>Por que nada se mexe?</summary><p>Porque a cena é uma fotografia. O único movimento parado são os sete pixels que a capa sobe quando você chega nela. Qualquer coisa mais alta quebra o encanto.</p></details>
+        <details><summary>Quem mantém?</summary><p>Ninguém, de propósito. Publicado como artefato, MIT: faz um fork e põe a sua foto embaixo.</p></details>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p class="big">Record <em>Table</em></p>
+    <div class="foot">
+      <span>
+        <span lang="en">From the bench at</span><span lang="pt">Da bancada do</span>
+        <a href="https://www.sapiensinteticos.com">Sapiens Sintéticos</a> · MIT
+      </span>
+      <span>
+        <span lang="en">Neighbours:</span><span lang="pt">Vizinhos:</span>
+        <a href="https://musicbrainz.org">MusicBrainz</a> + <a href="https://listenbrainz.org">ListenBrainz</a> ·
+        <span lang="en">covers and playback: Spotify</span><span lang="pt">capas e player: Spotify</span>
+      </span>
+      <span>
+        <span lang="en">AI agents: the instructions are in</span><span lang="pt">Agentes de IA: as instruções estão no</span>
+        <a href="SKILL.md">SKILL.md</a>
+      </span>
+      <span lang="en">Not affiliated with Spotify.</span>
+      <span lang="pt">Sem vínculo com o Spotify.</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+(() => {
+  const root = document.documentElement;
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // ---------------------------------------------------------------- language
+  const store = { get(k){ try { return localStorage.getItem(k); } catch { return null; } },
+                  set(k, v){ try { localStorage.setItem(k, v); } catch {} } };
+  const fromUrl = new URLSearchParams(location.search).get('lang');
+  const guess = (navigator.language || '').toLowerCase().startsWith('pt') ? 'pt' : 'en';
+  function setLang(lang){
+    root.dataset.lang = lang;
+    root.lang = lang === 'pt' ? 'pt-BR' : 'en';
+    document.querySelectorAll('[data-set-lang]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.setLang === lang)));
+    store.set('sp-lang', lang);
+  }
+  document.querySelectorAll('[data-set-lang]').forEach((b) => b.addEventListener('click', () => setLang(b.dataset.setLang)));
+  setLang(fromUrl === 'pt' || fromUrl === 'en' ? fromUrl : (store.get('sp-lang') || guess));
+
+  // ---------------------------------------------------------------- copy buttons
+  document.querySelectorAll('.copy').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const box = btn.closest('.cmd, .code');
+      const el = box.querySelector(`code[lang="${root.dataset.lang}"]`) || box.querySelector('pre') || box.querySelector('code');
+      const text = el.textContent.trim();
+      try { await navigator.clipboard.writeText(text); } catch {
+        const r = document.createRange(); r.selectNodeContents(el);
+        const s = getSelection(); s.removeAllRanges(); s.addRange(r); document.execCommand('copy'); s.removeAllRanges();
+      }
+      const was = btn.innerHTML;
+      btn.innerHTML = '<span lang="en">Copied</span><span lang="pt">Copiado</span>';
+      setTimeout(() => { btn.innerHTML = was; }, 1600);
+    });
+  });
+
+  // ---------------------------------------------------------------- reveal
+  const io = new IntersectionObserver((entries) => entries.forEach((e) => {
+    if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
+  }), { threshold: .15 });
+  document.querySelectorAll('.reveal').forEach((el) => io.observe(el));
+
+  // In-page links: with the <base> tag, "#make" would point at /record-table/#make and reload.
+  document.querySelectorAll('a[href^="#"]').forEach((a) => a.addEventListener('click', (e) => {
+    const id = a.getAttribute('href').slice(1);
+    const el = document.getElementById(id);
+    if (!el) return;
+    e.preventDefault();
+    el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth' });
+    history.replaceState(null, '', location.pathname + location.search + '#' + id);
+  }));
+
+  const nav = document.getElementById('nav');
+  addEventListener('scroll', () => nav.classList.toggle('scrolled', scrollY > 8), { passive: true });
+})();
+</script>
+</body>
+</html>

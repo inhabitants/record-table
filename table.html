@@ -1,0 +1,446 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Record Table</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#f2ece2;
+    --ink-dim:#9d9284;
+    --accent:#d8813f;
+    --serif:"Instrument Serif", Georgia, serif;
+    --sans:"Inter", system-ui, sans-serif;
+    --ease:cubic-bezier(.16,1,.3,1);
+    --board:url("board.webp");
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:#0b0806;color:var(--ink);font-family:var(--sans);overflow:hidden}
+
+  /* The board is a photograph, and it does not move. */
+  .board{
+    position:relative;width:100vw;height:100dvh;
+    background-image:var(--board);
+    background-size:contain;background-position:center;background-repeat:no-repeat;
+    background-color:#0b0806;
+  }
+  .field{
+    position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+    aspect-ratio:3/2;width:min(100vw,150dvh);height:auto;
+  }
+
+  /* A hard rectangular edge is the last thing that gives away a decal: real
+     ink dies into the paper at the trim, and the corner is knocked soft. One
+     mask on every printed layer, so they end together. */
+  .slot .art, .slot .grain, .slot .fibre, .slot .light{
+    border-radius:.7%;
+    -webkit-mask-image:
+      linear-gradient(to right,  transparent 0, #000 1.4%, #000 98.6%, transparent 100%),
+      linear-gradient(to bottom, transparent 0, #000 1.4%, #000 98.6%, transparent 100%);
+    -webkit-mask-composite:source-in;
+    mask-image:
+      linear-gradient(to right,  transparent 0, #000 1.4%, #000 98.6%, transparent 100%),
+      linear-gradient(to bottom, transparent 0, #000 1.4%, #000 98.6%, transparent 100%);
+    mask-composite:intersect;
+  }
+
+  /* One sleeve: the blank cardboard from the photo, real art laid on top. */
+  .slot{
+    position:absolute;
+    left:var(--l);top:var(--t);width:var(--w);height:var(--h);
+    border:0;padding:0;background:none;cursor:pointer;
+    transform:rotate(var(--r,0deg));
+    transition:transform .38s var(--ease);
+    will-change:transform;
+  }
+  .slot .art{
+    position:absolute;inset:0.8%;
+    background-size:cover;background-position:center;
+    /* Ink on kraft board never holds the black or the white of a screen.
+       Pulling both in is the difference between a print and a decal. */
+    filter:saturate(.90) contrast(.94) brightness(1.03) url(#paper);
+    box-shadow:0 0 0 rgba(0,0,0,0);
+    transition:box-shadow .38s var(--ease);
+  }
+  /* Sealing the art into the board takes TWO passes of the same photograph,
+     which is how a print mockup is built and why one pass always looks like a
+     transparency laid on top.
+     1. multiply carries the dark half down onto the art: the crease, the
+        foxing, the ring wear, the shadow the light is already casting.
+     2. screen carries the light half back UP over the ink: the pale paper
+        fibre and the specular sheen of the board. Ink does not hide the
+        grain of the paper it sits on, and this is the pass that says so. */
+  .slot .grain{
+    position:absolute;inset:0.8%;
+    background-image:var(--board);
+    background-size:var(--bs);background-position:var(--bp);
+    mix-blend-mode:multiply;
+    filter:brightness(1.30) contrast(.88);
+    opacity:.70;pointer-events:none;
+  }
+  .slot .fibre{
+    position:absolute;inset:0.8%;
+    background-image:var(--board);
+    background-size:var(--bs);background-position:var(--bp);
+    mix-blend-mode:screen;
+    /* Crushed hard: only the true highlights survive to be added back. Let
+       more through and the mid tones of the board wash out any dark artwork,
+       leaving a pale rectangle floating in the middle of the sleeve. */
+    filter:brightness(.20) contrast(2) saturate(.4);
+    opacity:.45;pointer-events:none;
+  }
+  .slot .light{
+    position:absolute;inset:0.8%;pointer-events:none;
+    background:linear-gradient(148deg, rgba(255,241,216,.16) 0%, rgba(255,255,255,0) 44%, rgba(0,0,0,.16) 100%);
+  }
+  .slot .edge{
+    position:absolute;inset:0.8%;pointer-events:none;
+    box-shadow:inset 0 0 0 1px rgba(60,40,22,.35), inset 0 1px 2px rgba(255,245,225,.18);
+  }
+  /* The whole gesture: seven pixels up, and a shadow in the direction the
+     light in the photograph already falls. Anything louder breaks the spell. */
+  .slot:hover{transform:rotate(var(--r,0deg)) translate(-3px,-7px)}
+  .slot:hover .art{box-shadow:11px 17px 26px rgba(0,0,0,.55)}
+  .slot:focus-visible{outline:none}
+  .slot:focus-visible .art{box-shadow:0 0 0 2px var(--accent), 11px 17px 26px rgba(0,0,0,.55)}
+  .slot[data-open="true"]{opacity:0;pointer-events:none;transition:none}
+  .slot[data-empty="true"]{pointer-events:none}
+  .slot[data-empty="true"] > *{display:none}
+
+  .signature{
+    position:absolute;left:50%;bottom:2.2%;transform:translateX(-50%);z-index:4;
+    text-align:center;text-shadow:0 2px 8px rgba(0,0,0,.9);
+  }
+  .signature h1{font-family:var(--serif);font-weight:400;font-size:clamp(20px,2.6vw,34px);margin:0}
+  .signature p{margin:3px 0 0;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:rgba(242,236,226,.55)}
+
+  .flyer{position:fixed;z-index:60;pointer-events:none;overflow:hidden}
+  .flyer .a{position:absolute;inset:0;background-size:cover;background-position:center}
+  .flyer .g{position:absolute;inset:0;background-image:var(--board);background-size:var(--bs);background-position:var(--bp);mix-blend-mode:multiply;filter:brightness(1.44) contrast(.82);opacity:.62}
+
+  .backdrop{position:fixed;inset:0;z-index:50;background:rgba(8,5,4,.945);backdrop-filter:blur(8px);opacity:0;pointer-events:none;transition:opacity .45s var(--ease)}
+  .backdrop[data-on="true"]{opacity:1;pointer-events:auto}
+  .detail{position:fixed;inset:0;z-index:61;display:grid;place-items:center;padding:clamp(18px,4vw,56px);pointer-events:none}
+  .detail[data-on="true"]{pointer-events:auto}
+  .card{
+    display:grid;grid-template-columns:minmax(200px,32%) 1fr;gap:clamp(24px,4vw,54px);align-items:center;
+    width:min(940px,100%);opacity:0;transform:translateY(12px);
+    transition:opacity .3s var(--ease) .18s, transform .5s var(--ease) .18s;
+  }
+  .detail[data-on="true"] .card{opacity:1;transform:none}
+  .sleeve{position:relative;aspect-ratio:1;z-index:1}
+  .sleeve .cover{position:absolute;inset:0;overflow:hidden;box-shadow:0 26px 50px rgba(0,0,0,.6);z-index:2;background-size:cover;background-position:center}
+  .sleeve .lp{
+    position:absolute;inset:0;border-radius:50%;z-index:1;
+    background:
+      radial-gradient(circle at 50% 50%, #0a0a0a 0 6.5%, transparent 6.6%),
+      repeating-radial-gradient(circle at 50% 50%, #0d0d0f 0 1.4px, #17171a 1.4px 2.5px),
+      #0b0b0d;
+    box-shadow:0 16px 30px rgba(0,0,0,.6);
+    transform:translateX(0);transition:transform .7s var(--ease);
+  }
+  .sleeve .lp::before{content:"";position:absolute;inset:35%;border-radius:50%;background:radial-gradient(circle at 40% 35%,#e8dcc4,#b9a884)}
+  .sleeve .lp::after{content:"";position:absolute;inset:0;border-radius:50%;mix-blend-mode:screen;
+    background:radial-gradient(circle at 50% 50%, #16100b 0 2.2%, transparent 2.3%),
+      conic-gradient(from 210deg, transparent 0 12%, rgba(255,255,255,.13) 18%, transparent 26% 62%, rgba(255,255,255,.06) 70%, transparent 78%)}
+  .sleeve[data-out="true"] .lp{transform:translateX(30%)}
+
+  .meta{position:relative;z-index:3}
+  .kicker{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);margin:0 0 10px}
+  .meta h2{font-family:var(--serif);font-weight:400;font-size:clamp(28px,4.2vw,54px);line-height:1.02;margin:0 0 8px;letter-spacing:-.015em}
+  .meta .by{font-family:var(--serif);font-style:italic;font-size:clamp(15px,1.7vw,22px);color:var(--ink-dim);margin:0 0 22px}
+  .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 30px;margin:0 0 22px;padding:18px 0;border-top:1px solid rgba(242,236,226,.14);border-bottom:1px solid rgba(242,236,226,.14)}
+  .grid dt{font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--ink-dim);margin:0 0 5px}
+  .grid dd{margin:0;font-size:14px}
+  .player{margin:0 0 18px;border-radius:12px;overflow:hidden;min-height:80px;background:rgba(255,255,255,.04)}
+  .player iframe{display:block;border:0;width:100%;height:152px}
+  .actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .btn{display:inline-flex;align-items:center;gap:9px;padding:10px 18px;border-radius:999px;border:1px solid rgba(242,236,226,.22);background:transparent;color:var(--ink);font:inherit;font-size:13px;cursor:pointer;text-decoration:none;transition:background .2s,border-color .2s,transform .2s var(--ease)}
+  .btn:hover{background:rgba(242,236,226,.08);border-color:rgba(242,236,226,.42);transform:translateY(-1px)}
+  .btn svg{width:15px;height:15px;flex:none}
+  .close{position:fixed;top:22px;right:24px;z-index:62;width:40px;height:40px;border-radius:50%;border:1px solid rgba(242,236,226,.2);background:rgba(18,14,10,.6);color:var(--ink);cursor:pointer;font-size:19px;opacity:0;pointer-events:none;transition:opacity .3s var(--ease)}
+  .close[data-on="true"]{opacity:1;pointer-events:auto}
+  .oops{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:30px;font-size:13px;color:var(--ink-dim);line-height:1.7}
+
+  @media (max-width:780px){ .card{grid-template-columns:1fr;gap:20px} .sleeve{max-width:210px} }
+</style>
+</head>
+<body>
+
+<!-- Printed paper is never perfectly flat, and a perfectly flat rectangle is
+     the tell. This warps the art by a few pixels along a noise field, which is
+     the one thing multiply and screen cannot fake: not a texture on top, a
+     deformation of the ink itself. Cheap, no asset, runs on the GPU. -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <filter id="paper" x="-2%" y="-2%" width="104%" height="104%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.009" numOctaves="3" seed="7" result="n"/>
+    <feDisplacementMap in="SourceGraphic" in2="n" scale="5"
+                       xChannelSelector="R" yChannelSelector="G"/>
+  </filter>
+</svg>
+
+<div class="board">
+  <div class="field" id="field"></div>
+  <div class="signature" id="signature"></div>
+</div>
+
+<div class="backdrop" id="backdrop"></div>
+<div class="detail" id="detail">
+  <div class="card">
+    <div class="sleeve" id="sleeve">
+      <div class="lp"></div>
+      <div class="cover" id="d-cover"></div>
+    </div>
+    <div class="meta">
+      <p class="kicker" id="d-kicker"></p>
+      <h2 id="d-title"></h2>
+      <p class="by" id="d-by"></p>
+      <dl class="grid">
+        <div><dt>Released</dt><dd id="d-year"></dd></div>
+        <div><dt>Tracks</dt><dd id="d-tracks"></dd></div>
+      </dl>
+      <div class="player" id="d-player"></div>
+      <div class="actions">
+        <a class="btn" id="d-open" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm4.6 14.4a.62.62 0 01-.86.21c-2.35-1.44-5.3-1.76-8.79-.96a.63.63 0 11-.28-1.22c3.81-.87 7.08-.5 9.72 1.11.29.18.39.57.21.86zm1.23-2.75a.78.78 0 01-1.07.26c-2.69-1.65-6.79-2.13-9.97-1.17a.78.78 0 11-.45-1.5c3.63-1.1 8.15-.56 11.24 1.34.36.22.48.7.25 1.07zm.1-2.86C14.71 8.87 9.4 8.69 6.32 9.62a.94.94 0 11-.54-1.8c3.54-1.07 9.4-.86 13.1 1.34a.94.94 0 01-.95 1.62z"/></svg>
+          Open in Spotify
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+<button class="close" id="close" aria-label="Close">&times;</button>
+
+<script>
+/* A board is a photograph plus the coordinates of the blank sleeves on it.
+   [left, top, width, height] in % of the image, plus degrees of rotation.
+    decides which slots fill first when there are fewer records than
+   slots: middle outward, so a half empty table still reads as a table, and
+   the leftover sleeves stay blank cardboard among the clutter.
+   Add your own board here after measuring it (see SKILL.md). */
+const BOARDS = {
+  /* Every sleeve here has its own record halfway out of it. That pairing is
+     what says "album" at a glance: a bare square of art on wood reads as a
+     poster. The slot covers the CARDBOARD only, so lifting a sleeve leaves its
+     disc lying on the table, which is what pulling a sleeve actually does. */
+  messy: {
+    image: "board-messy.webp",
+    /* Measured off the photograph itself, not by eye: a mask on the pale
+       desaturated cardboard, then second-order moments for the angle, which
+       uses the whole blob instead of four extreme pixels. Slots 0 and 4 came
+       out wrong there (the shaft of sunlight fuses with one, the paper inner
+       sleeve with the other) and are measured by hand. */
+    slots: [
+      [ 8.98, 6.53,17.62,26.42,-6.0],
+      [48.85, 6.65,17.00,25.48,-9.0],
+      [58.52,37.95,17.97,26.96,-2.8],
+      [34.03,47.37,16.63,24.93,15.4],
+      [ 5.20,61.46,18.18,27.28,-5.7],
+    ],
+    order: [3,2,1,0,4],
+  },
+  grid: {
+    image: "board.webp",
+    slots: [
+      [8.66,7.13,15.56,23.93,-0.6],  [30.60,6.64,16.80,23.63,0.4],
+      [51.24,7.03,15.69,23.44,-0.3], [72.14,7.62,16.54,23.63,0.7],
+      [8.59,34.38,16.28,23.63,-0.4], [30.60,34.18,14.97,23.24,0.5],
+      [51.24,34.38,15.82,23.44,-0.2],[72.14,34.96,15.76,23.44,0.6],
+      [8.46,62.01,15.76,23.73,-0.5], [30.60,62.30,16.80,23.44,0.3],
+      [51.43,61.72,15.63,23.73,-0.4],[72.40,62.30,15.82,23.63,0.6],
+    ],
+    order: [5,6,1,2,9,10,4,7,0,3,8,11],
+  },
+};
+const QS = new URLSearchParams(location.search);
+/* The board is picked by how many records there are, unless ?board= says
+   otherwise. Nobody should have to know that the messy board holds five and
+   the grid holds twelve: asking for a discography and silently seeing a third
+   of it is the kind of thing that makes people think the tool is broken. */
+let BOARD, SLOTS, ORDER;
+function chooseBoard(count){
+  BOARD = BOARDS[QS.get("board")] ||
+          (count > BOARDS.messy.slots.length ? BOARDS.grid : BOARDS.messy);
+  SLOTS = BOARD.slots;
+  ORDER = BOARD.order;
+  /* bundle.mjs swaps the photo for a data: URI so the single file needs no
+     server and no neighbouring assets. Falls back to the filename. */
+  const src = window.__INLINE_BOARDS?.[BOARD.image] || BOARD.image;
+  document.documentElement.style.setProperty("--board", 'url("' + src + '")');
+}
+
+const field=document.getElementById("field"), backdrop=document.getElementById("backdrop"),
+      detail=document.getElementById("detail"), closeBtn=document.getElementById("close"),
+      sleeve=document.getElementById("sleeve"), EASE="cubic-bezier(.16,1,.3,1)";
+let DATA=null, current=null, flying=false, bySlot=[];
+
+/* Everything below comes out of the data file, which is not ours to trust:
+   it can be swapped with ?data= and it can be edited by hand. So text lands
+   as text, the cover lands as one escaped url() token, and the embed only
+   mounts if it really is a Spotify URL. */
+function layer(cls){ const el=document.createElement("div"); el.className=cls; return el; }
+
+/* CSS.escape keeps the URL from closing url() and opening another property. */
+function paintCover(el, cover){
+  el.style.backgroundImage = cover ? "url(" + CSS.escape(cover) + ")" : "";
+}
+
+/* Spotify over https or nothing. Without it the iframe and the button both
+   go wherever the data file says, javascript: included. */
+function spotifyUrl(raw){
+  try {
+    const u = new URL(raw);
+    return (u.protocol === "https:" && u.hostname === "open.spotify.com") ? u : null;
+  } catch { return null; }
+}
+function spotifyEmbed(raw){
+  const u = spotifyUrl(raw);
+  if (!u) return null;
+  u.searchParams.set("theme", "0");
+  return u.href;
+}
+
+/* Percentage sprite: shows exactly region [l,t,w,h] of the photo. At rest the
+   crop sits flush with the background, so the hotspot is invisible until the
+   pointer arrives. */
+function sprite(b){
+  const [l,t,w,h]=b;
+  return { bs:`${(100/w*100).toFixed(3)}% ${(100/h*100).toFixed(3)}%`,
+           bp:`${(l/(100-w)*100).toFixed(3)}% ${(t/(100-h)*100).toFixed(3)}%` };
+}
+
+async function build(){
+  /* A bare .json filename sitting next to this page, and nothing else: no
+     absolute URL, no ../, nothing that aims the fetch at another origin. */
+  const asked = QS.get("data");
+  const src = (asked && /^[\w.-]+\.json$/.test(asked)) ? asked : "table.json";
+  /* A bundled page carries its own data, so it opens straight off the disk
+     with no server: fetch of a local file is exactly what file:// forbids. */
+  const inline = document.getElementById("table-data");
+  try {
+    DATA = inline ? JSON.parse(inline.textContent) : await (await fetch(src)).json();
+  }
+  catch {
+    const oops = layer("oops"), file = document.createElement("code"),
+          cmd = document.createElement("code");
+    file.textContent = src;
+    cmd.textContent = 'node build.mjs artist "<name or link>"';
+    oops.append("No ", file, " next to this file yet.",
+                document.createElement("br"), "Run ", cmd, " first.");
+    field.replaceChildren(oops);
+    return;
+  }
+
+  const owner = DATA.owner || { name:"Record table" };
+  chooseBoard(DATA.discs?.length || 0);
+  const n = Math.min(DATA.discs?.length || 0, SLOTS.length);
+  const name = document.createElement("h1"), count = document.createElement("p");
+  name.textContent = owner.name;
+  count.textContent = `${n} ${n===1?"record":"records"} on the table`;
+  document.getElementById("signature").replaceChildren(name, count);
+  document.title = `${owner.name}, record table`;
+
+  (DATA.discs||[]).slice(0,SLOTS.length).forEach((d,k)=>{ bySlot[ORDER[k]] = d; });
+
+  SLOTS.forEach((s,i)=>{
+    const d=bySlot[i], sp=sprite(s);
+    const el=document.createElement("button");
+    el.className="slot"; el.type="button"; el.dataset.i=i;
+    el.style.cssText=`--l:${s[0]}%;--t:${s[1]}%;--w:${s[2]}%;--h:${s[3]}%;--r:${s[4]}deg;--bs:${sp.bs};--bp:${sp.bp}`;
+    if(!d){ el.dataset.empty="true"; el.tabIndex=-1; field.appendChild(el); return; }
+    el.setAttribute("aria-label", `${d.title}, ${d.artist}`);
+    const art = layer("art");
+    paintCover(art, d.cover);
+    el.replaceChildren(art, layer("grain"), layer("fibre"), layer("light"), layer("edge"));
+    el.addEventListener("click", ()=>open(i, el));
+    field.appendChild(el);
+  });
+}
+
+function open(i, from_el){
+  if(flying) return;
+  flying=true; current=i;
+  const d=bySlot[i], s=SLOTS[i], sp=sprite(s);
+  const from=from_el.querySelector(".art").getBoundingClientRect();
+
+  fill(d);
+  detail.dataset.on="true"; backdrop.dataset.on="true"; closeBtn.dataset.on="true";
+  const to=sleeve.getBoundingClientRect();
+  sleeve.style.opacity="0"; from_el.dataset.open="true";
+
+  const f=document.createElement("div");
+  f.className="flyer";
+  f.style.cssText=`left:${from.left}px;top:${from.top}px;width:${from.width}px;height:${from.height}px;--bs:${sp.bs};--bp:${sp.bp}`;
+  const flyArt = layer("a");
+  paintCover(flyArt, d.cover);
+  f.replaceChildren(flyArt, layer("g"));
+  document.body.appendChild(f);
+
+  const scale=to.width/from.width;
+  f.animate([
+    { transform:`rotate(${s[4]}deg) translate(0,0) scale(1)`, boxShadow:"0 0 0 rgba(0,0,0,0)" },
+    { transform:`translate(${(to.left-from.left)*.5}px, ${(to.top-from.top)*.38}px) scale(${1+(scale-1)*.5}) perspective(1000px) rotateY(-19deg) translateZ(70px)`,
+      boxShadow:"26px 40px 60px rgba(0,0,0,.6)", offset:.55 },
+    { transform:`translate(${to.left-from.left}px, ${to.top-from.top}px) scale(${scale}) perspective(1000px) rotateY(0deg) translateZ(0)`,
+      boxShadow:"0 26px 50px rgba(0,0,0,.6)" },
+  ], {duration:640, easing:EASE, fill:"forwards"}).finished.then(()=>{
+    sleeve.style.opacity="1"; f.remove(); flying=false;
+    setTimeout(()=>{ sleeve.dataset.out="true"; }, 90);
+    /* The iframe only mounts after the landing: loading it mid flight drops
+       frames on exactly the animation the whole thing is about. */
+    const cur=bySlot[current], embed = cur && spotifyEmbed(cur.embed);
+    if(embed){
+      const frame=document.createElement("iframe");
+      frame.src=embed;
+      frame.loading="lazy";
+      frame.allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture";
+      document.getElementById("d-player").replaceChildren(frame);
+    }
+  });
+  document.addEventListener("keydown", onEsc);
+}
+
+function fill(d){
+  paintCover(document.getElementById("d-cover"), d.cover);
+  document.getElementById("d-kicker").textContent = d.kind==="neighbour" ? "Nearby" : "Album";
+  document.getElementById("d-title").textContent=d.title;
+  document.getElementById("d-by").textContent=d.artist;
+  document.getElementById("d-year").textContent=d.year||"—";
+  document.getElementById("d-tracks").textContent=d.tracks??"—";
+  const link = spotifyUrl(d.open);
+  document.getElementById("d-open").href = link ? link.href : "#";
+  document.getElementById("d-player").replaceChildren();
+  sleeve.dataset.out="false";
+}
+
+function close(){
+  if(current===null) return;
+  const from_el=field.querySelector(`.slot[data-i="${current}"]`);
+  document.getElementById("d-player").replaceChildren();
+  sleeve.dataset.out="false";
+  detail.dataset.on="false"; backdrop.dataset.on="false"; closeBtn.dataset.on="false";
+  setTimeout(()=>{ if(from_el) from_el.dataset.open="false"; }, 300);
+  current=null;
+  document.removeEventListener("keydown", onEsc);
+}
+function onEsc(e){ if(e.key==="Escape") close(); }
+backdrop.addEventListener("click", close);
+closeBtn.addEventListener("click", close);
+
+/* ?calibrate=1 draws the slots over the photo so a new board can be measured
+   by eye instead of by arithmetic. Nudge the numbers, reload, look again. */
+if (QS.get("calibrate")) {
+  document.body.insertAdjacentHTML("beforeend",
+    '<style>.slot{outline:1px solid #ff3b30;background:rgba(255,59,48,.18)}' +
+    '.slot::after{content:attr(data-i);position:absolute;left:4px;top:2px;' +
+    'font:600 13px/1 monospace;color:#fff;text-shadow:0 1px 3px #000}' +
+    '.slot>*{opacity:.35}</style>');
+}
+
+build();
+</script>
+</body>
+</html>

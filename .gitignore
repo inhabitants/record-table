@@ -1,0 +1,8 @@
+.env
+.env.local
+dist/
+table.json
+*.local.json
+# built by the Pages workflow from examples/
+site/table/
+site/SKILL.md
