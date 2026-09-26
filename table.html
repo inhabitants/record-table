@@ -32,59 +32,55 @@
     aspect-ratio:3/2;width:min(100vw,150dvh);height:auto;
   }
 
-  /* A hard rectangular edge is the last thing that gives away a decal: real
-     ink dies into the paper at the trim, and the corner is knocked soft. One
-     mask on every printed layer, so they end together. */
-  .slot .art, .slot .grain, .slot .fibre, .slot .light{
-    border-radius:.7%;
-    -webkit-mask-image:
-      linear-gradient(to right,  transparent 0, #000 1.4%, #000 98.6%, transparent 100%),
-      linear-gradient(to bottom, transparent 0, #000 1.4%, #000 98.6%, transparent 100%);
-    -webkit-mask-composite:source-in;
-    mask-image:
-      linear-gradient(to right,  transparent 0, #000 1.4%, #000 98.6%, transparent 100%),
-      linear-gradient(to bottom, transparent 0, #000 1.4%, #000 98.6%, transparent 100%);
-    mask-composite:intersect;
-  }
-
-  /* One sleeve: the blank cardboard from the photo, real art laid on top. */
+  /* One sleeve. The slot spans the whole field so everything in it shares the
+     photograph's coordinates; .face is cut to the sleeve's own four corners,
+     which is also what the pointer hits. Nothing of the blank board can show
+     past the art, and nothing of the art can spill onto the wood. */
   .slot{
-    position:absolute;
-    left:var(--l);top:var(--t);width:var(--w);height:var(--h);
-    border:0;padding:0;background:none;cursor:pointer;
-    transform:rotate(var(--r,0deg));
-    transition:transform .38s var(--ease);
-    will-change:transform;
+    position:absolute;inset:0;
+    border:0;padding:0;background:none;
+    pointer-events:none;
+    transform-origin:var(--o);
+    transition:transform .38s var(--ease), filter .38s var(--ease);
   }
+  .slot .face{
+    position:absolute;inset:0;
+    clip-path:var(--clip);
+    pointer-events:auto;cursor:pointer;
+  }
+  /* The art is bent onto the four measured corners (matrix3d, set by
+     place()), so a sleeve the camera saw a little off square takes the print
+     off square too. A rectangle turned by one angle never quite lands. */
   .slot .art{
-    position:absolute;inset:0.8%;
+    position:absolute;left:0;top:0;
+    transform-origin:0 0;
     background-size:cover;background-position:center;
     /* Ink on kraft board never holds the black or the white of a screen.
        Pulling both in is the difference between a print and a decal. */
     filter:saturate(.90) contrast(.94) brightness(1.03) url(#paper);
-    box-shadow:0 0 0 rgba(0,0,0,0);
-    transition:box-shadow .38s var(--ease);
   }
   /* Sealing the art into the board takes TWO passes of the same photograph,
      which is how a print mockup is built and why one pass always looks like a
-     transparency laid on top.
+     transparency laid on top. Both layers are the whole photo at the field's
+     own size, so every crease lands on the pixel it came from, whatever the
+     angle of the sleeve.
      1. multiply carries the dark half down onto the art: the crease, the
         foxing, the ring wear, the shadow the light is already casting.
      2. screen carries the light half back UP over the ink: the pale paper
         fibre and the specular sheen of the board. Ink does not hide the
         grain of the paper it sits on, and this is the pass that says so. */
   .slot .grain{
-    position:absolute;inset:0.8%;
+    position:absolute;inset:0;
     background-image:var(--board);
-    background-size:var(--bs);background-position:var(--bp);
+    background-size:100% 100%;
     mix-blend-mode:multiply;
     filter:brightness(1.30) contrast(.88);
     opacity:.70;pointer-events:none;
   }
   .slot .fibre{
-    position:absolute;inset:0.8%;
+    position:absolute;inset:0;
     background-image:var(--board);
-    background-size:var(--bs);background-position:var(--bp);
+    background-size:100% 100%;
     mix-blend-mode:screen;
     /* Crushed hard: only the true highlights survive to be added back. Let
        more through and the mid tones of the board wash out any dark artwork,
@@ -93,19 +89,15 @@
     opacity:.45;pointer-events:none;
   }
   .slot .light{
-    position:absolute;inset:0.8%;pointer-events:none;
+    position:absolute;inset:0;pointer-events:none;
     background:linear-gradient(148deg, rgba(255,241,216,.16) 0%, rgba(255,255,255,0) 44%, rgba(0,0,0,.16) 100%);
   }
-  .slot .edge{
-    position:absolute;inset:0.8%;pointer-events:none;
-    box-shadow:inset 0 0 0 1px rgba(60,40,22,.35), inset 0 1px 2px rgba(255,245,225,.18);
-  }
-  /* The whole gesture: seven pixels up, and a shadow in the direction the
-     light in the photograph already falls. Anything louder breaks the spell. */
-  .slot:hover{transform:rotate(var(--r,0deg)) translate(-3px,-7px)}
-  .slot:hover .art{box-shadow:11px 17px 26px rgba(0,0,0,.55)}
-  .slot:focus-visible{outline:none}
-  .slot:focus-visible .art{box-shadow:0 0 0 2px var(--accent), 11px 17px 26px rgba(0,0,0,.55)}
+  /* The whole gesture: the sleeve comes a little toward the overhead camera,
+     so it grows about its own centre, and drops a shadow the way the light in
+     the photograph already falls. Growing is what keeps the blank board under
+     it covered; a plain slide up would uncover a sliver of it. */
+  .slot:hover{z-index:2;transform:translate(-2px,-4px) scale(1.03);filter:drop-shadow(10px 16px 22px rgba(0,0,0,.55))}
+  .slot:focus-visible{outline:none;z-index:2;filter:drop-shadow(0 0 1px var(--accent)) drop-shadow(0 0 1px var(--accent)) drop-shadow(10px 16px 22px rgba(0,0,0,.55))}
   .slot[data-open="true"]{opacity:0;pointer-events:none;transition:none}
   .slot[data-empty="true"]{pointer-events:none}
   .slot[data-empty="true"] > *{display:none}
@@ -215,12 +207,20 @@
 <button class="close" id="close" aria-label="Close">&times;</button>
 
 <script>
-/* A board is a photograph plus the coordinates of the blank sleeves on it.
-   [left, top, width, height] in % of the image, plus degrees of rotation.
-    decides which slots fill first when there are fewer records than
-   slots: middle outward, so a half empty table still reads as a table, and
-   the leftover sleeves stay blank cardboard among the clutter.
-   Add your own board here after measuring it (see SKILL.md). */
+/* A board is a photograph plus the four corners of every blank sleeve on it:
+   [x, y] in % of the image, clockwise from the corner that sits top left, so
+   the art goes on the right way up. `order` decides which slots fill first
+   when there are fewer records than slots: middle outward, so a half empty
+   table still reads as a table, and the leftover sleeves stay blank cardboard
+   among the clutter. Add your own board here after measuring it (SKILL.md).
+
+   Both boards are measured off the photograph, not by eye: sixty samples
+   across each side find the step from light board to dark wood, a robust
+   line goes through them, and the corners are where the four lines cross. A
+   white inner sleeve steps the other way and the disc peeking out is dark
+   anyway, so neither pulls a side off. Sub pixel, which is the point: a
+   sleeve off by three pixels shows a sliver of blank board, and that sliver
+   is the whole difference between printed and pasted on. */
 const BOARDS = {
   /* Every sleeve here has its own record halfway out of it. That pairing is
      what says "album" at a glance: a bare square of art on wood reads as a
@@ -228,29 +228,30 @@ const BOARDS = {
      disc lying on the table, which is what pulling a sleeve actually does. */
   messy: {
     image: "board-messy.webp",
-    /* Measured off the photograph itself, not by eye: a mask on the pale
-       desaturated cardboard, then second-order moments for the angle, which
-       uses the whole blob instead of four extreme pixels. Slots 0 and 4 came
-       out wrong there (the shaft of sunlight fuses with one, the paper inner
-       sleeve with the other) and are measured by hand. */
     slots: [
-      [ 8.98, 6.53,17.62,26.42,-6.0],
-      [48.85, 6.65,17.00,25.48,-9.0],
-      [58.52,37.95,17.97,26.96,-2.8],
-      [34.03,47.37,16.63,24.93,15.4],
-      [ 5.20,61.46,18.18,27.28,-5.7],
+      [[ 6.91, 9.62], [24.35, 4.60], [27.53,27.86], [ 9.49,33.71]],
+      [[46.67,12.78], [62.19, 5.39], [68.46,27.31], [52.32,35.50]],
+      [[57.38,39.80], [74.43,37.91], [76.98,63.44], [59.23,65.81]],
+      [[37.20,45.73], [52.95,51.05], [48.96,76.32], [32.83,70.19]],
+      [[ 9.93,61.87], [25.33,67.07], [20.79,93.95], [ 4.57,87.65]],
     ],
     order: [3,2,1,0,4],
   },
   grid: {
     image: "board.webp",
     slots: [
-      [8.66,7.13,15.56,23.93,-0.6],  [30.60,6.64,16.80,23.63,0.4],
-      [51.24,7.03,15.69,23.44,-0.3], [72.14,7.62,16.54,23.63,0.7],
-      [8.59,34.38,16.28,23.63,-0.4], [30.60,34.18,14.97,23.24,0.5],
-      [51.24,34.38,15.82,23.44,-0.2],[72.14,34.96,15.76,23.44,0.6],
-      [8.46,62.01,15.76,23.73,-0.5], [30.60,62.30,16.80,23.44,0.3],
-      [51.43,61.72,15.63,23.73,-0.4],[72.40,62.30,15.82,23.63,0.6],
+      [[ 8.44, 7.01], [24.48, 7.18], [24.48,30.58], [ 8.45,30.56]],
+      [[30.62, 6.89], [47.21, 7.07], [47.20,30.53], [30.51,30.43]],
+      [[50.87, 7.27], [66.38, 7.43], [66.42,30.78], [50.79,30.63]],
+      [[72.78, 7.61], [88.57, 7.92], [88.75,31.22], [72.80,31.04]],
+      [[ 8.50,34.61], [24.57,34.37], [24.63,57.67], [ 8.63,57.92]],
+      [[30.37,34.33], [45.33,34.49], [45.29,57.46], [30.25,57.28]],
+      [[50.67,34.64], [66.36,34.68], [66.27,57.84], [50.62,57.71]],
+      [[72.68,35.14], [88.17,35.38], [88.05,58.34], [72.59,58.07]],
+      [[ 8.34,62.28], [24.35,62.19], [24.27,85.81], [ 8.28,85.86]],
+      [[30.63,62.47], [46.69,62.50], [46.61,86.00], [30.46,85.87]],
+      [[50.98,62.32], [66.57,62.44], [66.54,85.89], [50.90,85.81]],
+      [[72.40,62.49], [87.66,62.64], [87.61,86.06], [72.38,85.92]],
     ],
     order: [5,6,1,2,9,10,4,7,0,3,8,11],
   },
@@ -303,13 +304,57 @@ function spotifyEmbed(raw){
   return u.href;
 }
 
-/* Percentage sprite: shows exactly region [l,t,w,h] of the photo. At rest the
-   crop sits flush with the background, so the hotspot is invisible until the
-   pointer arrives. */
+/* Percentage sprite: shows exactly region [l,t,w,h] of the photo. Only the
+   flyer uses it, cut from the box around the sleeve: in flight nothing has to
+   register with the table any more. */
 function sprite(b){
   const [l,t,w,h]=b;
   return { bs:`${(100/w*100).toFixed(3)}% ${(100/h*100).toFixed(3)}%`,
            bp:`${(l/(100-w)*100).toFixed(3)}% ${(t/(100-h)*100).toFixed(3)}%` };
+}
+function bbox(q){
+  const xs=q.map(p=>p[0]), ys=q.map(p=>p[1]), l=Math.min(...xs), t=Math.min(...ys);
+  return [l, t, Math.max(...xs)-l, Math.max(...ys)-t];
+}
+const center = q => [q.reduce((t,p)=>t+p[0],0)/4, q.reduce((t,p)=>t+p[1],0)/4];
+function side(q){
+  let t=0;
+  for(let k=0;k<4;k++){ const a=q[k], b=q[(k+1)%4]; t+=Math.hypot(b[0]-a[0], b[1]-a[1]); }
+  return t/4;
+}
+
+/* The projective map that takes an s x s square onto four corners, written as
+   CSS matrix3d (column major). Square to quad after Heckbert: exact for any
+   four corners, and it comes out as a plain rotation when the sleeve really
+   is a turned square. */
+function quadMatrix(s, q){
+  const [[x0,y0],[x1,y1],[x2,y2],[x3,y3]] = q;
+  const sx=x0-x1+x2-x3, sy=y0-y1+y2-y3;
+  let g=0, h=0;
+  if (sx || sy) {
+    const dx1=x1-x2, dx2=x3-x2, dy1=y1-y2, dy2=y3-y2, den=dx1*dy2-dx2*dy1;
+    g=(sx*dy2-dx2*sy)/den; h=(dx1*sy-sx*dy1)/den;
+  }
+  const a=x1-x0+g*x1, b=x3-x0+h*x3, d=y1-y0+g*y1, e=y3-y0+h*y3;
+  return `matrix3d(${a/s},${d/s},0,${g/s},${b/s},${e/s},0,${h/s},0,0,1,0,${x0},${y0},0,1)`;
+}
+
+/* The art is laid out at the sleeve's size on screen, so the matrix only
+   bends it and never blows up a small raster. It runs BLEED px past every
+   side and the face's clip trims it back to the sleeve: the paper warp moves
+   ink by up to half its scale, and without the bleed it drags the edge
+   inward and a hairline of blank board shows through. Redone on every
+   resize: the field follows the window, and the corners are pixels of it. */
+const BLEED = 3;
+function place(){
+  const W=field.clientWidth, H=field.clientHeight;
+  if(!W || !H) return;
+  field.querySelectorAll(".slot .art").forEach(art=>{
+    const q=SLOTS[art.closest(".slot").dataset.i].map(([x,y])=>[x/100*W, y/100*H]);
+    const s=Math.max(1, Math.round(side(q))), [cx,cy]=center(q), k=1+2*BLEED/s;
+    art.style.width=art.style.height=s+"px";
+    art.style.transform=quadMatrix(s, q.map(([x,y])=>[cx+(x-cx)*k, cy+(y-cy)*k]));
+  });
 }
 
 async function build(){
@@ -345,26 +390,37 @@ async function build(){
 
   (DATA.discs||[]).slice(0,SLOTS.length).forEach((d,k)=>{ bySlot[ORDER[k]] = d; });
 
-  SLOTS.forEach((s,i)=>{
-    const d=bySlot[i], sp=sprite(s);
+  SLOTS.forEach((q,i)=>{
+    const d=bySlot[i], [cx,cy]=center(q);
     const el=document.createElement("button");
     el.className="slot"; el.type="button"; el.dataset.i=i;
-    el.style.cssText=`--l:${s[0]}%;--t:${s[1]}%;--w:${s[2]}%;--h:${s[3]}%;--r:${s[4]}deg;--bs:${sp.bs};--bp:${sp.bp}`;
+    el.style.setProperty("--clip", "polygon(" + q.map(([x,y])=>`${x}% ${y}%`).join(",") + ")");
+    el.style.setProperty("--o", `${cx}% ${cy}%`);
     if(!d){ el.dataset.empty="true"; el.tabIndex=-1; field.appendChild(el); return; }
     el.setAttribute("aria-label", `${d.title}, ${d.artist}`);
-    const art = layer("art");
+    const face = layer("face"), art = layer("art");
     paintCover(art, d.cover);
-    el.replaceChildren(art, layer("grain"), layer("fibre"), layer("light"), layer("edge"));
+    art.append(layer("light"));
+    face.append(art, layer("grain"), layer("fibre"));
+    el.replaceChildren(face);
     el.addEventListener("click", ()=>open(i, el));
     field.appendChild(el);
   });
+  if (QS.get("calibrate")) calibrate();
+  place();
+  new ResizeObserver(place).observe(field);
 }
 
 function open(i, from_el){
   if(flying) return;
   flying=true; current=i;
-  const d=bySlot[i], s=SLOTS[i], sp=sprite(s);
-  const from=from_el.querySelector(".art").getBoundingClientRect();
+  /* Take off from the sleeve as it sits on screen: its centre, its size and
+     the angle of its top edge. */
+  const d=bySlot[i], q=SLOTS[i], sp=sprite(bbox(q)), fr=field.getBoundingClientRect();
+  const pts=q.map(([x,y])=>[fr.left+x/100*fr.width, fr.top+y/100*fr.height]);
+  const size=side(pts), [cx,cy]=center(pts);
+  const tilt=Math.atan2(pts[1][1]-pts[0][1], pts[1][0]-pts[0][0])*180/Math.PI;
+  const from={left:cx-size/2, top:cy-size/2, width:size, height:size};
 
   fill(d);
   detail.dataset.on="true"; backdrop.dataset.on="true"; closeBtn.dataset.on="true";
@@ -381,7 +437,7 @@ function open(i, from_el){
 
   const scale=to.width/from.width;
   f.animate([
-    { transform:`rotate(${s[4]}deg) translate(0,0) scale(1)`, boxShadow:"0 0 0 rgba(0,0,0,0)" },
+    { transform:`rotate(${tilt}deg) translate(0,0) scale(1)`, boxShadow:"0 0 0 rgba(0,0,0,0)" },
     { transform:`translate(${(to.left-from.left)*.5}px, ${(to.top-from.top)*.38}px) scale(${1+(scale-1)*.5}) perspective(1000px) rotateY(-19deg) translateZ(70px)`,
       boxShadow:"26px 40px 60px rgba(0,0,0,.6)", offset:.55 },
     { transform:`translate(${to.left-from.left}px, ${to.top-from.top}px) scale(${scale}) perspective(1000px) rotateY(0deg) translateZ(0)`,
@@ -430,14 +486,27 @@ function onEsc(e){ if(e.key==="Escape") close(); }
 backdrop.addEventListener("click", close);
 closeBtn.addEventListener("click", close);
 
-/* ?calibrate=1 draws the slots over the photo so a new board can be measured
-   by eye instead of by arithmetic. Nudge the numbers, reload, look again. */
-if (QS.get("calibrate")) {
-  document.body.insertAdjacentHTML("beforeend",
-    '<style>.slot{outline:1px solid #ff3b30;background:rgba(255,59,48,.18)}' +
-    '.slot::after{content:attr(data-i);position:absolute;left:4px;top:2px;' +
-    'font:600 13px/1 monospace;color:#fff;text-shadow:0 1px 3px #000}' +
-    '.slot>*{opacity:.35}</style>');
+/* ?calibrate=1 draws every slot's four corners over the photo, empty ones
+   included, with the art faded, so a measurement can be checked against the
+   board it came from. Nudge the numbers, reload, look again. */
+function calibrate(){
+  document.head.insertAdjacentHTML("beforeend",
+    '<style>.slot .face>*{opacity:.35}' +
+    '.calib{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:3}' +
+    '.calib polygon{fill:rgba(255,59,48,.14);stroke:#ff3b30;stroke-width:1;vector-effect:non-scaling-stroke}' +
+    '.calib-n{position:absolute;z-index:3;transform:translate(-50%,-50%);pointer-events:none;' +
+    'font:600 13px/1 monospace;color:#fff;text-shadow:0 1px 3px #000}</style>');
+  const NS="http://www.w3.org/2000/svg", svg=document.createElementNS(NS,"svg");
+  svg.setAttribute("class","calib"); svg.setAttribute("viewBox","0 0 100 100");
+  svg.setAttribute("preserveAspectRatio","none");
+  SLOTS.forEach((q,i)=>{
+    const poly=document.createElementNS(NS,"polygon");
+    poly.setAttribute("points", q.map(p=>p.join(",")).join(" "));
+    const n=document.createElement("span"), [cx,cy]=center(q);
+    n.className="calib-n"; n.textContent=i; n.style.left=cx+"%"; n.style.top=cy+"%";
+    svg.appendChild(poly); field.appendChild(n);
+  });
+  field.appendChild(svg);
 }
 
 build();

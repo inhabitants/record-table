@@ -35,9 +35,8 @@ the photograph:
 /* 1. the dark half comes DOWN onto the art:
       crease, foxing, ring wear, the shadow the light already casts */
 .grain{
-  background-image: var(--board);   /* the same photo, */
-  background-size: var(--bs);       /* cropped to this one sleeve */
-  background-position: var(--bp);
+  background-image: var(--board);   /* the same photo, at the table's own */
+  background-size: 100% 100%;       /* size, clipped to this one sleeve */
   mix-blend-mode: multiply;
   filter: brightness(1.30) contrast(.88);
   opacity: .70;
@@ -48,8 +47,7 @@ the photograph:
       pale rectangle hovering in the middle of the sleeve. */
 .fibre{
   background-image: var(--board);
-  background-size: var(--bs);
-  background-position: var(--bp);
+  background-size: 100% 100%;
   mix-blend-mode: screen;
   filter: brightness(.20) contrast(2) saturate(.4);
   opacity: .45;
@@ -59,24 +57,25 @@ the photograph:
 .art{ filter: saturate(.90) contrast(.94) brightness(1.03); }
 ```
 
-The last giveaway is the trim. A hard rectangular edge is a decal; real ink
-dies into the paper. Every printed layer gets the same soft mask, so they end
-together:
+Both layers span the whole table and the sleeve's outline cuts them, so every
+crease lands on the pixel it came from whatever the angle of the sleeve. A
+crop of the photo turned by the sleeve's angle lands the texture a few pixels
+off, and the eye catches it.
 
-```css
-mask-image:
-  linear-gradient(to right,  transparent 0, #000 1.4%, #000 98.6%, transparent 100%),
-  linear-gradient(to bottom, transparent 0, #000 1.4%, #000 98.6%, transparent 100%);
-mask-composite: intersect;
-```
+The last giveaway is the trim. The art is bent onto the sleeve's four measured
+corners (a `matrix3d` projective transform), runs a few pixels past every side
+and is cut back by the same outline (`clip-path` from the corners). Its edge is
+then the edge the camera saw, and no band of blank board survives next to it.
+A rectangle turned by one angle never quite lands, and the sliver it leaves is
+what reads as pasted on.
 
 What CSS cannot do is displacement: the art will not bend along a dent in the
 cardboard the way it would in Photoshop. Keeping the sleeves reasonably flat in
 the photograph is how you avoid needing it.
 
-The same percentage-sprite trick makes the hotspots invisible at rest: each
-clickable region is a crop of the photograph itself, so it sits flush with the
-background until it lifts.
+The outline is the hotspot too: the pointer only hits inside the clip, so the
+disc beside a sleeve and the wood around it stay part of the table, and at
+rest nothing gives away that the sleeve can lift.
 
 **Give every sleeve its own record, half out.** A bare square of art on wood
 reads as a poster; a square with a black disc emerging behind it reads as an
@@ -159,7 +158,7 @@ Query parameters on the unbundled page, all optional:
 |---|---|
 | `?data=other.json` | load a different table, so one deploy holds many |
 | `?board=grid` | the tidy 4x3 board instead of the default messy one |
-| `?calibrate=1` | draw the slots over the photo, for measuring a new board |
+| `?calibrate=1` | draw every slot's four corners over the photo, for measuring a new board |
 
 ## Two boards ship with this
 
@@ -234,7 +233,7 @@ tangled headphones, a cassette tape, a brass lighter, folded reading glasses, a
 newspaper page, a book lying face down, a few guitar picks, breadcrumbs.
 ```
 
-Three instructions there are load-bearing.
+Two instructions there are load-bearing, and one is taste.
 
 **EVERY SINGLE ONE has its record half out.** Ask for loose records lying
 around instead and the model will happily scatter discs across the wood, which
@@ -244,50 +243,49 @@ lands on them they read as posters. The pairing is the thing.
 **NONE overlapping.** A sleeve half under another cannot be lifted on its own,
 because its crop would carry a piece of its neighbour up with it.
 
-**Twelve degrees.** Past roughly twenty, an axis-aligned crop starts dragging
-in too much wood at the corners.
+**Twelve degrees.** The table takes any angle, since each sleeve is four
+measured corners rather than a turned box. Twelve is taste: loose enough to
+read as an afternoon of listening, not so loose it reads as a spill.
 
-Then measure. Open the image at full size, read the pixel box of each sleeve,
-and convert to percentages of the image (`x/width*100`, `y/height*100`). Add a
-board to `BOARDS` in `table.html`, each slot as
-`[left, top, width, height, rotation]`. Load with `?calibrate=1` to see the
-slots drawn over the photo, nudge, reload, look again. A regular grid means you
-can compute most of it instead of measuring each one. Keep the camera dead
-overhead: real perspective on the sleeves would need a quad transform rather
-than the plain rotation this uses.
+Then measure. Each slot is the sleeve's **four corners**, `[x, y]` in percent
+of the image (`x/width*100`, `y/height*100`), clockwise from the corner that
+sits top left, so the art goes on the right way up. Add a board to `BOARDS` in
+`table.html` and load with `?calibrate=1`: every slot is drawn over the photo,
+numbered, empty ones included. Nudge, reload, look again. The art is bent onto
+those corners with a projective transform, so a camera a little off overhead
+is fine, and the photo's own texture goes back over the art pixel for pixel,
+clipped to the same outline.
 
-**The art must cover the whole sleeve.** `inset: 0.8%`, no more, so the only
-cardboard left showing is the thickness of the edge. It is tempting to leave a
-generous margin and call it the border of a printed sleeve, and it is wrong:
-the moment a band of bare board is visible around the art, the eye reads two
-objects, a photograph laid on a piece of cardboard. Nobody prints a cover that
-way. The blank board is the substrate, and a substrate is never seen.
+**The corners have to be right to the pixel.** The art runs past every side
+and the sleeve's outline trims it, so nothing of the blank board shows next to
+the ink and nothing of the ink spills onto the wood. That only holds if the
+outline really is the sleeve's. Three pixels off and a sliver of bare board
+shows along one side, and the eye reads two objects, a picture laid on a piece
+of cardboard. Nobody prints a cover that way. The blank board is the
+substrate, and a substrate is never seen.
 
-Which means the measurement has to be right, and the way to get it right is to
-let the photograph tell you. The board is pale desaturated cardboard on
-saturated wood, so it separates cleanly:
-
-```js
-const sat = max ? (max - min) / max : 0;
-const lum = 0.299*r + 0.587*g + 0.114*b;
-if (sat < 0.34 && lum > 100) mask[p] = 1;   // board yes, wood no, even in sunlight
-```
-
-Then flood fill for the blobs, and take the angle from **second-order moments**
-rather than from the four extreme pixels:
+By eye gets within five pixels, which is not enough, so let the photograph
+tell you. Rough corners by eye first. Then, for each side, sample across the
+edge at fifty or sixty points and keep where the step from light board to dark
+wood is steepest:
 
 ```js
-let deg = 0.5 * Math.atan2(2*u11, u20 - u02) * 180 / Math.PI;
-while (deg >  45) deg -= 90;      // a square repeats every 90°
-while (deg < -45) deg += 90;
-const L = Math.sqrt(n) + 2*erosionRadius;   // area of a square, plus what erosion ate
+// one sample across a side: n is the outward normal, lum() reads the photo
+let best = -Infinity, at = 0;
+for (let s = -14; s <= 14; s += 0.5) {
+  const step = lum(p.x + n.x*(s-1), p.y + n.y*(s-1))
+             - lum(p.x + n.x*(s+1), p.y + n.y*(s+1));
+  if (step > best) { best = step; at = s; }
+}
+if (best > 6) points.push({ x: p.x + n.x*at, y: p.y + n.y*at });
 ```
 
-Moments use the whole blob, so a bit of noise stuck to one corner barely moves
-the answer, while a single extreme pixel would swing it by twenty degrees.
-Expect two or three of them to still come out wrong, where a shaft of sunlight
-or a white inner sleeve fuses with the board: measure those by hand and check
-the lot by drawing the reconstructed squares back over the photo.
+Fit a line through each side's points robustly (fit, drop the worst quarter,
+fit again) and take the corners where neighbouring lines cross. Only
+light-to-dark steps count, so a white inner sleeve poking out, which steps the
+other way, cannot pull a side, and the disc half out is as dark as the wood.
+A shaft of sunlight across a sleeve weakens the step without moving it. Check
+the lot with `?calibrate=1`, zoomed in on the corners.
 
 `order` decides which slots fill first when there are fewer records than slots.
 It fills the middle outward, so a five-record table still reads as a table.
